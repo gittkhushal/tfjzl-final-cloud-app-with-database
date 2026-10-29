@@ -18,7 +18,7 @@
         <ul class="nav navbar-nav navbar-right">
             {% if user.is_authenticated %}
             <li>
-                <a class="btn btn-link" href="#">{{ user.first_name }}({{ user.username }})</a>
+                <a class="btn btn-link" href="#">({{ user.username }})</a>
                 <a class="btn btn-link" href="{% url 'onlinecourse:logout' %}">Logout</a>
             </li>
             {% else %}
@@ -41,11 +41,11 @@
 <div class="container-fluid mt-3">
     {% if grade >= 80 %}
     <div class="alert alert-success">
-       <b>Congratulations!</b> You have passed the exam and completed the course with score {{ grade }}/100.
+       <b>Congratulations!</b> You have passed the exam and completed the course with score {{ grade }}/{{ possible|default:100 }}.
     </div>
     {% else %}
     <div class="alert alert-danger">
-       <b>Failed</b> Sorry, you have failed the exam with score {{ grade }}/100.
+       <b>Failed</b> Sorry, you have failed the exam with score {{ grade }}/{{ possible|default:100 }}.
     </div>
     <a class="btn btn-link text-danger" href="{% url 'onlinecourse:course_details' course.id %}">Re-test</a>
     {% endif %}
@@ -55,18 +55,18 @@
         {% for question in course.question_set.all %}
             <div class="card mt-2">
                 <div class="card-header bg-light">
-                    <h5>Question {{ forloop.counter }}: {{ question.content }}</h5>
+                    <h5>Question {{ forloop.counter }}: {{ question.question_text }}</h5>
                 </div>
                 <div class="card-body">
                     {% for choice in question.choice_set.all %}
-                        {% if choice.is_correct and choice in submission.choices.all %}
-                            <div class="text-success font-weight-bold p-1"><b>Correct answer:</b> {{ choice.content }}</div>
-                        {% elif choice.is_correct and choice not in submission.choices.all %}
-                            <div class="text-warning p-1"><b>Not selected correct answer:</b> {{ choice.content }}</div>
-                        {% elif not choice.is_correct and choice in submission.choices.all %}
-                            <div class="text-danger p-1"><b>Wrong answer:</b> {{ choice.content }}</div>
+                        {% if choice.is_correct and choice.id in selected_ids %}
+                            <div class="text-success font-weight-bold p-1"><b>Correct answer:</b> {{ choice.choice_text }}</div>
+                        {% elif choice.is_correct and choice.id not in selected_ids %}
+                            <div class="text-warning p-1"><b>Not selected correct answer:</b> {{ choice.choice_text }}</div>
+                        {% elif not choice.is_correct and choice.id in selected_ids %}
+                            <div class="text-danger p-1"><b>Wrong answer:</b> {{ choice.choice_text }}</div>
                         {% else %}
-                            <div class="text-muted p-1">{{ choice.content }}</div>
+                            <div class="text-muted p-1">{{ choice.choice_text }}</div>
                         {% endif %}
                     {% endfor %}
                 </div>

@@ -63,14 +63,14 @@
                         {% for question in course.question_set.all %}
                         <div class="card mt-2">
                             <div class="card-header bg-info text-white">
-                                <h5>Question {{ forloop.counter }}: {{ question.content }} <span class="badge badge-light float-right">{{ question.grade }} Points</span></h5>
+                                <h5>Question {{ forloop.counter }}: {{ question.question_text }} <span class="badge badge-light float-right">{{ question.grade }} Points</span></h5>
                             </div>
                             <div class="card-body">
                                 {% for choice in question.choice_set.all %}
                                 <div class="form-check">
                                     <label class="form-check-label">
                                         <input type="checkbox" name="choice_{{ choice.id }}" class="form-check-input" id="choice_{{ choice.id }}" value="{{ choice.id }}">
-                                        {{ choice.content }}
+                                        {{ choice.choice_text }}
                                     </label>
                                 </div>
                                 {% endfor %}

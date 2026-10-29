@@ -14,33 +14,30 @@ logger = logging.getLogger(__name__)
 
 def registration_request(request):
     context = {}
-    if request.method == 'GET':
-        return render(request, 'onlinecourse/user_registration_bootstrap.html', context)
-    elif request.method == 'POST':
-        # Check if user exists
+    if request.method == 'POST':
         username = request.POST['username']
-        password = request.POST['psw']
         first_name = request.POST['firstname']
         last_name = request.POST['lastname']
+        password = request.POST['psw']
         user_exist = False
         try:
             User.objects.get(username=username)
             user_exist = True
-        except:
-            logger.error("New user")
+        except Exception:
+            logger.error("Failed to find user")
         if not user_exist:
-            user = User.objects.create_user(username=username, first_name=first_name, last_name=last_name,
-                                            password=password)
+            user = User.objects.create_user(username=username, first_name=first_name, last_name=last_name, password=password)
             login(request, user)
-            return redirect("onlinecourse:index")
+            return redirect('onlinecourse:index')
         else:
-            context['message'] = "User already exists."
+            context['message'] = "User already exists"
             return render(request, 'onlinecourse/user_registration_bootstrap.html', context)
+    return render(request, 'onlinecourse/user_registration_bootstrap.html', context)
 
 
 def login_request(request):
     context = {}
-    if request.method == "POST":
+    if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['psw']
         user = authenticate(username=username, password=password)
@@ -48,10 +45,9 @@ def login_request(request):
             login(request, user)
             return redirect('onlinecourse:index')
         else:
-            context['message'] = "Invalid username or password."
+            context['message'] = "Invalid username or password"
             return render(request, 'onlinecourse/user_login_bootstrap.html', context)
-    else:
-        return render(request, 'onlinecourse/user_login_bootstrap.html', context)
+    return render(request, 'onlinecourse/user_login_bootstrap.html', context)
 
 
 def logout_request(request):
@@ -61,41 +57,44 @@ def logout_request(request):
 
 def check_if_enrolled(user, course):
     is_enrolled = False
-    if user.id is not None:
-        # Check if user enrolled
-        num_results = Enrollment.objects.filter(user=user, course=course).count()
-        if num_results > 0:
+    if user.is_authenticated:
+        if Enrollment.objects.filter(user=user, course=course).exists():
             is_enrolled = True
     return is_enrolled
 
 
-# CourseListView
+# Course list view
 class CourseListView(generic.ListView):
     template_name = 'onlinecourse/course_list_bootstrap.html'
     context_object_name = 'course_list'
 
     def get_queryset(self):
-        user = self.request.user
-        courses = Course.objects.order_by('-total_enrollment')[:10]
-        for course in courses:
-            if user.is_authenticated:
-                course.is_enrolled = check_if_enrolled(user, course)
-        return courses
+        return Course.objects.order_by('-total_enrollment')[:10]
 
 
+# Course detail view
 class CourseDetailView(generic.DetailView):
     model = Course
     template_name = 'onlinecourse/course_detail_bootstrap.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        course = self.get_object()
+        user = self.request.user
+        context['is_enrolled'] = check_if_enrolled(user, course)
+        return context
 
 
 def enroll(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     user = request.user
 
+    if not user.is_authenticated:
+        return redirect('onlinecourse:login')
+
     is_enrolled = check_if_enrolled(user, course)
-    if not is_enrolled and user.is_authenticated:
-        # Create an enrollment
-        Enrollment.objects.create(user=user, course=course, mode='honor')
+    if not is_enrolled:
+        Enrollment.objects.create(user=user, course=course, mode='audit')
         course.total_enrollment += 1
         course.save()
 
@@ -144,13 +143,17 @@ def show_exam_result(request, course_id, submission_id):
     choices = submission.choices.all()
     selected_ids = [choice.id for choice in choices]
 
-    total_score = 0
     questions = course.question_set.all()
+    total_score = 0
+    possible = 0
     for question in questions:
+        possible += question.grade
         if question.is_get_score(selected_ids):
             total_score += question.grade
 
     context['course'] = course
-    context['grade'] = total_score
     context['submission'] = submission
+    context['grade'] = total_score
+    context['possible'] = possible
+    context['selected_ids'] = selected_ids
     return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
